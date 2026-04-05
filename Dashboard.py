@@ -11,7 +11,11 @@ from wordcloud import WordCloud, STOPWORDS
 import matplotlib.pyplot as plt
 
 # --- 1. CONFIG & REFINED STYLING ---
-st.set_page_config(page_title="Market Intelligence Terminal", layout="wide")
+st.set_page_config(
+    page_title="Market Sentiment Intelligence",
+    page_icon="https://cdn-icons-png.flaticon.com/512/18220/18220151.png",  # You can use a URL or a local file path here
+    layout="wide"
+)
 
 st.markdown("""
     <style>
