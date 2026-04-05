@@ -1,0 +1,10 @@
+streamlit
+pandas
+yfinance
+finnhub-python
+joblib
+plotly
+numpy
+wordcloud
+matplotlib
+scikit-learn
