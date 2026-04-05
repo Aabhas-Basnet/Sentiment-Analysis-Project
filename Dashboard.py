@@ -258,7 +258,26 @@ else:
         pie_fig.update_layout(height=280, margin=dict(t=50, b=0, l=0, r=0), showlegend=True)
         st.plotly_chart(pie_fig, use_container_width=True)
 
-    # SECTION 2: ROI GROWTH CHART (FULL WIDTH)
+    # SECTION 2: FUSION CHART
+    st.divider()
+    st.subheader("Narrative-Price Fusion")
+    
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=merged['str_time'], y=merged['Close'], mode='lines', line=dict(color='#1A73E8', width=2), hoverinfo='skip'))
+    
+    events = merged[merged['sent_score'].abs() > 0.2].copy()
+    fig.add_trace(go.Scatter(
+        x=events['str_time'], y=events['Close'], mode='markers',
+        marker=dict(size=events['sent_score'].abs()*25+5, color=events['sent_score'], 
+                    colorscale='RdYlGn', showscale=True, colorbar=dict(orientation='h', y=-0.25, thickness=15)),
+        text=events['headline'],
+    ))
+
+    fig.update_xaxes(type='category', tickmode='array', tickvals=tick_vals, ticktext=unique_dates, gridcolor='rgba(128,128,128,0.1)', tickangle=0)
+    fig.update_layout(height=600, margin=dict(t=10, b=150, l=50, r=10), template="plotly_dark", showlegend=False, hovermode="x unified")
+    st.plotly_chart(fig, use_container_width=True)
+    
+    # SECTION 3: ROI GROWTH CHART (FULL WIDTH)
     st.divider()
     st.subheader("Strategy ROI Growth ($100 Base)")
     
@@ -280,25 +299,6 @@ else:
     growth_fig.update_yaxes(gridcolor='rgba(128,128,128,0.1)', tickprefix="$")
     growth_fig.update_layout(height=400, margin=dict(t=10, b=50, l=10, r=10), template="plotly_dark", plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
     st.plotly_chart(growth_fig, use_container_width=True)
-
-    # SECTION 3: FUSION CHART
-    st.divider()
-    st.subheader("Narrative-Price Fusion")
-    
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=merged['str_time'], y=merged['Close'], mode='lines', line=dict(color='#1A73E8', width=2), hoverinfo='skip'))
-    
-    events = merged[merged['sent_score'].abs() > 0.2].copy()
-    fig.add_trace(go.Scatter(
-        x=events['str_time'], y=events['Close'], mode='markers',
-        marker=dict(size=events['sent_score'].abs()*25+5, color=events['sent_score'], 
-                    colorscale='RdYlGn', showscale=True, colorbar=dict(orientation='h', y=-0.25, thickness=15)),
-        text=events['headline'],
-    ))
-
-    fig.update_xaxes(type='category', tickmode='array', tickvals=tick_vals, ticktext=unique_dates, gridcolor='rgba(128,128,128,0.1)', tickangle=0)
-    fig.update_layout(height=600, margin=dict(t=10, b=150, l=50, r=10), template="plotly_dark", showlegend=False, hovermode="x unified")
-    st.plotly_chart(fig, use_container_width=True)
 
     # SECTION 4: WORD CLOUD
     st.divider()
