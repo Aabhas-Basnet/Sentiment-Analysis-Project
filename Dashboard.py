@@ -11,7 +11,11 @@ from wordcloud import WordCloud, STOPWORDS
 import matplotlib.pyplot as plt
 
 # --- 1. CONFIG & REFINED STYLING ---
-st.set_page_config(page_title="Market Intelligence Terminal", layout="wide")
+st.set_page_config(
+    page_title="Market Sentiment Intelligence",
+    page_icon="https://cdn-icons-png.flaticon.com/512/18220/18220151.png",  # You can use a URL or a local file path here
+    layout="wide"
+)
 
 st.markdown("""
     <style>
@@ -38,58 +42,84 @@ st.markdown("""
 if 'data_loaded' not in st.session_state:
     st.session_state.data_loaded = False
 
-# --- 3. SIDEBAR ---
-st.sidebar.header("Intelligence Parameters")
-api_key = st.sidebar.text_input("Finnhub API Key", type="password")
-ticker_input = st.sidebar.text_input("Target Ticker", value="MU").upper()
-lookback = st.sidebar.slider("Historical Window (Days)", 1, 14, 7)
-
-# --- 4. CORE ENGINE ---
-def execute_intelligence_fetch():
+# --- 3. CORE ENGINE ---
+def execute_intelligence_fetch(ticker_input, lookback):
     try:
+        # --- SECURE API KEY EXTRACTION ---
+        # This pulls from .streamlit/secrets.toml
+        SECRET_API_KEY = st.secrets["FINNHUB_API_KEY"]
+        
         ticker_obj = yf.Ticker(ticker_input)
         info = ticker_obj.info
         
-        if not info.get('regularMarketPrice'):
-            st.sidebar.error(f"Invalid Ticker: {ticker_input}")
+        # Validate ticker existence
+        if not info.get('regularMarketPrice') and not info.get('currentPrice'):
+            st.error(f"Invalid Ticker: {ticker_input}")
             return
 
-        client = finnhub.Client(api_key=api_key)
+        client = finnhub.Client(api_key=SECRET_API_KEY)
         fetch_start = datetime.now() - timedelta(days=lookback + 2)
         
+        # Fetching news and price data
         news = client.company_news(ticker_input, _from=fetch_start.strftime('%Y-%m-%d'), to=datetime.now().strftime('%Y-%m-%d'))
         prices = yf.download(ticker_input, start=fetch_start, interval="5m")
 
         if len(news) == 0 or prices.empty:
-            st.sidebar.warning("Data gap detected.")
+            st.warning("Data gap detected. Try a larger lookback window or a more active ticker.")
             return
 
+        # Load models
         vectorizer = joblib.load('tfidf_vectorizer.pkl')
         model = joblib.load('sentiment_model.pkl')
         
+        # Sentiment Processing
         df_news = pd.DataFrame(news)
         X_vec = vectorizer.transform(df_news['headline'])
         df_news['sent_score'] = (model.predict_proba(X_vec)[:, 1] - 0.5) * 2
         df_news['datetime'] = pd.to_datetime(df_news['datetime'], unit='s')
         
-        prices.columns = prices.columns.get_level_values(0)
+        # Cleaning Price Data (Handling Multi-Index from yfinance)
+        if isinstance(prices.columns, pd.MultiIndex):
+            prices.columns = prices.columns.get_level_values(0)
         prices.index = prices.index.tz_localize(None)
         
+        # Merging News with Price Action
         merged = pd.merge_asof(prices.sort_index(), df_news.sort_values('datetime'), 
                               left_index=True, right_on='datetime', direction='backward')
         merged['sent_score'] = merged['sent_score'].fillna(0)
         merged['str_time'] = merged.index.strftime('%b %d, %H:%M')
 
+        # Saving to state
         st.session_state.master_df = merged
         st.session_state.news_df = df_news
         st.session_state.ticker_metadata = info
         st.session_state.data_loaded = True
+        
+        # Refresh to display dashboard
+        st.rerun()
 
     except Exception as e:
         st.error(f"Analytical Engine Failure: {e}")
 
-if st.sidebar.button("Generate Executive Report"):
-    execute_intelligence_fetch()
+# --- 4. MAIN INTERFACE (ALWAYS VISIBLE AT TOP) ---
+st.title("Market Intelligence Terminal")
+st.subheader("Analysis Parameters")
+
+col1, col2 = st.columns(2)
+with col1:
+    ticker_input = st.text_input("Target Ticker Symbol", value="MU").upper()
+with col2:
+    lookback = st.select_slider("Historical Window (Days)", options=[1, 3, 5, 7, 10, 14], value=7)
+
+st.write("")
+
+btn_col1, btn_col2, btn_col3 = st.columns([1, 2, 1])
+with btn_col2:
+    if st.button("Generate Executive Report", use_container_width=True, type="primary"):
+        with st.spinner(f"Analyzing {ticker_input}..."):
+            execute_intelligence_fetch(ticker_input, lookback)
+
+st.markdown("---")
 
 # --- 5. UI RENDERING ---
 
