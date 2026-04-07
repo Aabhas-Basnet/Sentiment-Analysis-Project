@@ -124,9 +124,6 @@ st.markdown("---")
 # --- 5. UI RENDERING ---
 
 if not st.session_state.data_loaded:
-    st.title("Market Intelligence Terminal")
-    # PROFESSIONAL FRAMEWORK DOCUMENTATION (Home Page Section)
-    st.markdown("---")
     st.header("Market Intelligence Framework: A Deep Dive into Data-Driven Sentiment Analysis")
     
     st.subheader("The Foundation: Neural Sentiment Mapping")
